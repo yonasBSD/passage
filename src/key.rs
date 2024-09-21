@@ -4,6 +4,7 @@ use std::fs::{self, File, OpenOptions};
 use std::io;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
+use passwords::PasswordGenerator;
 
 #[cfg(unix)]
 use std::os::unix::fs::OpenOptionsExt;
@@ -87,7 +88,18 @@ pub fn read_secret_key<P: AsRef<Path>>(path: P) -> Result<Identity, Error> {
             let mut bytes = vec![];
             File::open(path)?.read_to_end(&mut bytes)?;
 
-            let passphrase = input::read_secret("Passphrase for secret key", None)?;
+            let pg = PasswordGenerator {
+                length: 30,
+                numbers: true,
+                lowercase_letters: true,
+                uppercase_letters: true,
+                symbols: true,
+                spaces: false,
+                exclude_similar_characters: true,
+                strict: true,
+            };
+
+            let passphrase = pg.generate_one().unwrap();
             let decrypted = crypt::decrypt_with_passphrase(&bytes, Some(&passphrase))?;
             match IdentityFile::from_buffer(decrypted.as_bytes()) {
                 Ok(identity_file) => identity_file
